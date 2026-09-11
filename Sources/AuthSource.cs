@@ -1,6 +1,7 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ikea.Data;
@@ -13,6 +14,7 @@ namespace ikea.Sources
     {
         private readonly AppDbContext _context;
         private readonly IConfiguration _config;
+        private readonly PasswordHasher<User> _passwordHasher = new();
 
         public AuthSource(AppDbContext context, IConfiguration config)
         {
@@ -23,17 +25,22 @@ namespace ikea.Sources
         public async Task<string?> LoginAsync(string email, string password)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null)
+                return null;
 
-            if (user == null || user.PasswordHash != password)
+            var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password);
+            if (result == PasswordVerificationResult.Failed)
                 return null;
 
             return CreateToken(user);
         }
 
-        public async Task<string?> RegisterAsync(User newUser)
+        public async Task<string?> RegisterAsync(User newUser, string plainPassword)
         {
             if (await _context.Users.AnyAsync(u => u.Email == newUser.Email))
                 return null;
+
+            newUser.PasswordHash = _passwordHasher.HashPassword(newUser, plainPassword);
 
             _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
@@ -49,6 +56,7 @@ namespace ikea.Sources
         {
             var claims = new List<Claim>
             {
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Role, user.Role ?? "Customer"),

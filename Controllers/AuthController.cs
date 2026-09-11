@@ -32,13 +32,12 @@ namespace ikea.Controllers
             var user = new User
             {
                 Email = dto.Email,
-                PasswordHash = dto.Password, 
                 FirstName = dto.FirstName,
                 LastName = dto.LastName,
                 Role = "Customer"
             };
 
-            var token = await _authSource.RegisterAsync(user);
+            var token = await _authSource.RegisterAsync(user, dto.Password);
             if (token == null)
                 return BadRequest(new { message = "Користувач з таким email вже існує" });
 
