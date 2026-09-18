@@ -21,6 +21,7 @@ builder.Services.AddScoped<AuthSource>();
 builder.Services.AddScoped<ProductSource>();
 builder.Services.AddScoped<CartSource>();
 builder.Services.AddScoped<CategorySource>();
+builder.Services.AddScoped<AdminSource>();
 
 // JWT
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

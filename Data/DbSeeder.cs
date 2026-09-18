@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using ikea.Models;
 
 namespace ikea.Data
@@ -7,6 +9,12 @@ namespace ikea.Data
         private const string ImageBaseUrl = "http://localhost:5000/images/products/";
 
         public static async Task SeedAsync(AppDbContext context)
+        {
+            await SeedProductsAsync(context);
+            await SeedAdminUserAsync(context);
+        }
+
+        private static async Task SeedProductsAsync(AppDbContext context)
         {
             if (context.Products.Any())
                 return;
@@ -58,6 +66,28 @@ namespace ikea.Data
             };
 
             context.Products.AddRange(products);
+            await context.SaveChangesAsync();
+        }
+
+        private static async Task SeedAdminUserAsync(AppDbContext context)
+        {
+            if (await context.Users.AnyAsync(u => u.Role == "Admin"))
+                return;
+
+            var hasher = new PasswordHasher<User>();
+            var admin = new User
+            {
+                Email = "admin@ikea.com",
+                FirstName = "Admin",
+                LastName = "IKEA",
+                Role = "Admin",
+            };
+            admin.PasswordHash = hasher.HashPassword(admin, "Admin123!");
+
+            context.Users.Add(admin);
+            await context.SaveChangesAsync();
+
+            context.Carts.Add(new Cart { UserId = admin.Id });
             await context.SaveChangesAsync();
         }
 
