@@ -1,5 +1,6 @@
 ﻿using ikea.DTO.Requests;
 using ikea.Sources;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ikea.Controllers
@@ -32,6 +33,7 @@ namespace ikea.Controllers
             return Ok(product);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateProductDto dto)
         {
@@ -39,12 +41,13 @@ namespace ikea.Controllers
             return CreatedAtAction(nameof(GetById), new { id = createdProduct.Id }, createdProduct);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var success = await _productSource.DeleteAsync(id);
+            var (success, error) = await _productSource.DeleteAsync(id);
             if (!success)
-                return NotFound();
+                return BadRequest(new { message = error });
 
             return NoContent();
         }

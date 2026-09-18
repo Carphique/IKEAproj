@@ -96,14 +96,31 @@ namespace ikea.Sources
             return (await GetByIdAsync(product.Id))!;
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<(bool Success, string? ErrorMessage)> DeleteAsync(int id)
         {
-            var product = await _context.Products.FindAsync(id);
-            if (product == null) return false;
+            var product = await _context.Products
+                .Include(p => p.Images)
+                .Include(p => p.Reviews)
+                .FirstOrDefaultAsync(p => p.Id == id);
 
+            if (product == null)
+                return (false, "Товар не знайдено");
+
+            var relatedCartItems = await _context.CartItems.Where(ci => ci.ProductId == id).ToListAsync();
+            _context.CartItems.RemoveRange(relatedCartItems);
+            _context.Reviews.RemoveRange(product.Reviews);
+            _context.Images.RemoveRange(product.Images);
             _context.Products.Remove(product);
-            await _context.SaveChangesAsync();
-            return true;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return (true, null);
+            }
+            catch (DbUpdateException)
+            {
+                return (false, "Неможливо видалити товар: він уже є в оформленому замовленні одного з покупців.");
+            }
         }
     }
 }
